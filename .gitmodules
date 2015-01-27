@@ -1,0 +1,6 @@
+[submodule "tools/llvm"]
+	path = tools/llvm
+	url = https://github.com/iovisor/llvm_bpf.git
+[submodule "tools/llvm_bpf"]
+	path = tools/llvm_bpf
+	url = https://github.com/iovisor/llvm_bpf.git

@@ -168,7 +168,7 @@ void* alloc_mmap(size_t size) {
     return ptr;
 }
 
-    struct bpf_binary_header *
+struct bpf_binary_header *
 bpf_jit_binary_alloc(unsigned int proglen, __u8 **image_ptr,
         unsigned int alignment,
         bpf_jit_fill_hole_t bpf_fill_ill_insns)
@@ -182,6 +182,8 @@ bpf_jit_binary_alloc(unsigned int proglen, __u8 **image_ptr,
      */
     size = ROUND_UP(proglen + sizeof(*hdr) + 128, PAGE_SIZE);
     hdr = alloc_mmap(size);
+    //hdr = malloc(size);
+    //printf("CORE: hdr %p\n", hdr);
     if (hdr == NULL)
         return NULL;
 
@@ -206,13 +208,13 @@ void bpf_jit_binary_free(struct bpf_binary_header *hdr)
 }
 #endif /* CONFIG_BPF_JIT */
 
+/* Helper Functions for BPF_CALL*/
+
 static __u64 bpf_memcmp(__u64 r1, __u64 r2, __u64 r3, __u64 r4, __u64 r5)
 {
     void *ptr1 = (void*) (long) r1;
     void *ptr2 = (void*) (long) r2;
     __u32 size = (__u32) r3;
-    //char buf[64];
-    //buf = ptr1;
     if (size < 64){
         return memcmp(ptr1, ptr2, size);
     }
@@ -281,6 +283,7 @@ void fixup_bpf_calls(struct bpf_prog *prog)
             if (!fn->func)
                 printf("No func!\n");
             insn->imm = fn->func - __bpf_call_base;
+            //printf("CORE: insn->imm %d\n", insn->imm);
         }
     }
 }

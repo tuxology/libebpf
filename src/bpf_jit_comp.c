@@ -716,27 +716,19 @@ xadd:			if (is_imm8(insn->off))
                 /* call */
             case BPF_JMP | BPF_CALL:
                 func = (__u8 *) __bpf_call_base + imm32;
-                printf("JIT: func %p\n", func);
+                //printf("JIT: func %p, imm32 %p\n", func, imm32);
                 jmp_offset = func - (image + addrs[i]);
-                printf("JIT: jmp_offset %p\n", jmp_offset);
-                if (ctx->seen_ld_abs) {
-                    EMIT2(0x41, 0x52); /* push %r10 */
-                    EMIT2(0x41, 0x51); /* push %r9 */
-                    /* need to adjust jmp offset, since
-                     * pop %r9, pop %r10 take 4 bytes after call insn
-                     */
-                    jmp_offset += 4;
-                }
+                //printf("JIT: jmp_offset %p\n", jmp_offset);
+
+#if 0
                 if (!imm32 || !is_simm32(jmp_offset)) {
                     printf("unsupported bpf func %d addr %p image %p\n",
                             imm32, func, image);
                     return -EINVAL;
                 }
+#endif
                 EMIT1_off32(0xE8, jmp_offset);
-                if (ctx->seen_ld_abs) {
-                    EMIT2(0x41, 0x59); /* pop %r9 */
-                    EMIT2(0x41, 0x5A); /* pop %r10 */
-                }
+                //EMIT1_off32(0xE8, imm32);
                 break;
 
                 /* cond jump */
@@ -950,6 +942,7 @@ void bpf_int_jit_compile(struct bpf_prog *prog)
         return;
 
     addrs = malloc(prog->len * sizeof(*addrs));
+    //printf("JIT: addrs %p\n", addrs);
     if (!addrs)
         return;
 
@@ -979,6 +972,7 @@ void bpf_int_jit_compile(struct bpf_prog *prog)
         if (proglen == oldproglen) {
             header = bpf_jit_binary_alloc(proglen, &image,
                     1, jit_fill_hole);
+            //printf("JIT: header %p\n", header);
             if (!header)
                 goto out;
         }

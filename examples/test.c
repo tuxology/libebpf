@@ -94,11 +94,13 @@ static struct bpf_insn insn_prog[] = {
     BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_1, 0), /* r2 = &bctx (which is therefore &arg1, and thus, &dev->name) */
     BPF_LDX_MEM(BPF_DW, BPF_REG_3, BPF_REG_2, 0), /* r3 = *(dev->name) */
 //    BPF_MOV64_IMM(BPF_REG_4, 0), /* mov 8 to R4 */
-//    BPF_RAW_INSN(BPF_JMP | BPF_CALL, 0, 0, 0, BPF_FUNC_dummy),
 //    BPF_MOV64_IMM(BPF_REG_4, 28524), /* mov 8 to R4 */
 //    BPF_JMP_REG(BPF_JEQ, BPF_REG_4, BPF_REG_3, 3), /* compare 8 and arg3 */
 //    BPF_LD_IMM64(BPF_REG_0, 0), /* FALSE */
 //    BPF_EXIT_INSN(),
+
+    //BPF_RAW_INSN(BPF_JMP | BPF_CALL, 0, 0, 0, BPF_FUNC_unspec),
+#if 1
     BPF_LDX_MEM(BPF_DW, BPF_REG_4, BPF_REG_1, 8), /* pointer to arg2 */
     BPF_MOV64_REG(BPF_REG_5, BPF_REG_1), /* save R1 that is bctx pointer for later*/
     BPF_MOV64_REG(BPF_REG_1, BPF_REG_2), /* mov pointer of arg1 to r1 */
@@ -110,17 +112,62 @@ static struct bpf_insn insn_prog[] = {
     BPF_LD_IMM64(BPF_REG_0, 0), /* FALSE */
     BPF_EXIT_INSN(),
     BPF_MOV64_REG(BPF_REG_1, BPF_REG_5),
+#endif
+
+#if 1
+    BPF_LDX_MEM(BPF_DW, BPF_REG_4, BPF_REG_1, 8), /* pointer to arg2 */
+    BPF_MOV64_REG(BPF_REG_5, BPF_REG_1), /* save R1 that is bctx pointer for later*/
+    BPF_MOV64_REG(BPF_REG_1, BPF_REG_2), /* mov pointer of arg1 to r1 */
+    BPF_MOV64_REG(BPF_REG_2, BPF_REG_4), /* mov pointer to arg2 to r2*/
+    //BPF_MOV64_IMM(BPF_REG_3, 3), /* mov 3 to R4 */
+    BPF_RAW_INSN(BPF_JMP | BPF_CALL, 0, 0, 0, BPF_FUNC_strcmp),
+    BPF_LD_IMM64(BPF_REG_6, 0), /*load 0 in r6*/
+    BPF_JMP_REG(BPF_JEQ, BPF_REG_0, BPF_REG_6, 3), /* check if return value of memcmp() is 0 (equal) */
+    BPF_LD_IMM64(BPF_REG_0, 0), /* FALSE */
+    BPF_EXIT_INSN(),
+    BPF_MOV64_REG(BPF_REG_1, BPF_REG_5),
+#endif
+
+#if 1
+    BPF_LDX_MEM(BPF_DW, BPF_REG_4, BPF_REG_1, 8), /* pointer to arg2 */
+    BPF_MOV64_REG(BPF_REG_5, BPF_REG_1), /* save R1 that is bctx pointer for later*/
+    BPF_MOV64_REG(BPF_REG_1, BPF_REG_2), /* mov pointer of arg1 to r1 */
+    BPF_MOV64_REG(BPF_REG_2, BPF_REG_4), /* mov pointer to arg2 to r2*/
+    //BPF_MOV64_IMM(BPF_REG_3, 3), /* mov 3 to R4 */
+    BPF_RAW_INSN(BPF_JMP | BPF_CALL, 0, 0, 0, BPF_FUNC_strcmp),
+    BPF_LD_IMM64(BPF_REG_6, 0), /*load 0 in r6*/
+    BPF_JMP_REG(BPF_JEQ, BPF_REG_0, BPF_REG_6, 3), /* check if return value of memcmp() is 0 (equal) */
+    BPF_LD_IMM64(BPF_REG_0, 0), /* FALSE */
+    BPF_EXIT_INSN(),
+    BPF_MOV64_REG(BPF_REG_1, BPF_REG_5),
+#endif
+
+#if 1
+    BPF_LDX_MEM(BPF_DW, BPF_REG_4, BPF_REG_1, 8), /* pointer to arg2 */
+    BPF_MOV64_REG(BPF_REG_5, BPF_REG_1), /* save R1 that is bctx pointer for later*/
+    BPF_MOV64_REG(BPF_REG_1, BPF_REG_2), /* mov pointer of arg1 to r1 */
+    BPF_MOV64_REG(BPF_REG_2, BPF_REG_4), /* mov pointer to arg2 to r2*/
+    //BPF_MOV64_IMM(BPF_REG_3, 3), /* mov 3 to R4 */
+    BPF_RAW_INSN(BPF_JMP | BPF_CALL, 0, 0, 0, BPF_FUNC_strcmp),
+    BPF_LD_IMM64(BPF_REG_6, 0), /*load 0 in r6*/
+    BPF_JMP_REG(BPF_JEQ, BPF_REG_0, BPF_REG_6, 3), /* check if return value of memcmp() is 0 (equal) */
+    BPF_LD_IMM64(BPF_REG_0, 0), /* FALSE */
+    BPF_EXIT_INSN(),
+    BPF_MOV64_REG(BPF_REG_1, BPF_REG_5),
+#endif
 
     BPF_LDX_MEM(BPF_DW, BPF_REG_3, BPF_REG_1, 16), /* r3 = *(skb->protocol) */
     BPF_MOV64_IMM(BPF_REG_4, 8), /* mov 8 to R4 */
     BPF_JMP_REG(BPF_JEQ, BPF_REG_4, BPF_REG_3, 3), /* compare 8 and arg3 */
     BPF_LD_IMM64(BPF_REG_0, 0), /* FALSE */
     BPF_EXIT_INSN(),
+
     BPF_LDX_MEM(BPF_DW, BPF_REG_3, BPF_REG_1, 24), /* r3 = *(skb->len) */
     BPF_MOV64_IMM(BPF_REG_4, 100), /* mov 100 to R4 */
     BPF_JMP_REG(BPF_JGT, BPF_REG_3, BPF_REG_4, 3), /* jump if r3 > 100 */
     BPF_LD_IMM64(BPF_REG_0, 0), /* FALSE */
     BPF_EXIT_INSN(),
+
     BPF_LD_IMM64(BPF_REG_0, 1), /* TRUE */
     BPF_EXIT_INSN(),
 };
@@ -269,7 +316,7 @@ int main(int argv, char **argc)
     int ret = init_ebpf_prog();
     ret = run_filt(args);
     ret = cleanup();
-    //free(args);
+    free(args);
 
     return 0;
 }

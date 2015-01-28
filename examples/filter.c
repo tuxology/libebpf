@@ -1,6 +1,7 @@
 #include <include/bpf.h>
 #include <include/bpf_trace.h>
 
+
 static int (*bpf_strcmp)(void *ptr1, void *ptr2) = (void *) BPF_FUNC_strcmp;
 
 struct filt_args {

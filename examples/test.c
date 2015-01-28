@@ -61,35 +61,6 @@ struct filt_args {
 };
 
 /* The actual eBPF prog instructions */
-#if 0
-static struct bpf_insn insn_prog[] = { 
-    BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_1, 0), /* r2 = &bctx (which is therefore &arg1, and thus, &dev->name) */
-    BPF_LDX_MEM(BPF_DW, BPF_REG_3, BPF_REG_2, 0), /* r3 = *(dev->name) */
-//    BPF_MOV64_IMM(BPF_REG_4, 0), /* mov 8 to R4 */
-    BPF_RAW_INSN(BPF_JMP | BPF_CALL, 0, 0, 0, BPF_FUNC_dummy),
-    BPF_MOV64_IMM(BPF_REG_4, 28524), /* mov 8 to R4 */
-    BPF_JMP_REG(BPF_JEQ, BPF_REG_4, BPF_REG_3, 3), /* compare 8 and arg3 */
-    BPF_LD_IMM64(BPF_REG_0, 0), /* FALSE */
-    BPF_EXIT_INSN(),
-//    BPF_LDX_MEM(BPF_DW, BPF_REG_4, BPF_REG_1, 8), /* r4 = (u64) 28524, which is "lo" */
-//    BPF_JMP_REG(BPF_JEQ, BPF_REG_3, BPF_REG_4, 3), /* compare arg1 and arg2 */
-//    BPF_LD_IMM64(BPF_REG_0, 0), /* FALSE */
-//    BPF_EXIT_INSN(),
-    BPF_LDX_MEM(BPF_DW, BPF_REG_3, BPF_REG_1, 16), /* r3 = *(skb->protocol) */
-    BPF_MOV64_IMM(BPF_REG_4, 8), /* mov 8 to R4 */
-    BPF_JMP_REG(BPF_JEQ, BPF_REG_4, BPF_REG_3, 3), /* compare 8 and arg3 */
-    BPF_LD_IMM64(BPF_REG_0, 0), /* FALSE */
-    BPF_EXIT_INSN(),
-    BPF_LDX_MEM(BPF_DW, BPF_REG_3, BPF_REG_1, 24), /* r3 = *(skb->len) */
-    BPF_MOV64_IMM(BPF_REG_4, 100), /* mov 100 to R4 */
-    BPF_JMP_REG(BPF_JGT, BPF_REG_3, BPF_REG_4, 3), /* jump if r3 > 100 */
-    BPF_LD_IMM64(BPF_REG_0, 0), /* FALSE */
-    BPF_EXIT_INSN(),
-    BPF_LD_IMM64(BPF_REG_0, 1), /* TRUE */
-    BPF_EXIT_INSN(),
-};
-#endif
-
 static struct bpf_insn insn_prog[] = { 
     BPF_LDX_MEM(BPF_DW, BPF_REG_2, BPF_REG_1, 0), /* r2 = &bctx (which is therefore &arg1, and thus, &dev->name) */
     BPF_LDX_MEM(BPF_DW, BPF_REG_3, BPF_REG_2, 0), /* r3 = *(dev->name) */

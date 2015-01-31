@@ -38,7 +38,7 @@
 //int bpf_jit_enable __read_mostly;
 
 // 0 for no jit, 1 for jit w/o debug, 2 for JIT with jited code dump
-int bpf_jit_enable = 2;
+int bpf_jit_enable = 1;
 
 /*
  * assembly code in bpf_jit.S

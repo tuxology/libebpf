@@ -38,7 +38,7 @@
 //int bpf_jit_enable __read_mostly;
 
 // 0 for no jit, 1 for jit w/o debug, 2 for JIT with jited code dump
-int bpf_jit_enable = 1;
+int bpf_jit_enable = 2;
 
 /*
  * assembly code in bpf_jit.S
@@ -934,6 +934,25 @@ void bpf_int_jit_compile(struct bpf_prog *prog)
     int *addrs;
     int pass;
     int i;
+
+    /* Get filter mode from env*/
+    char *mode;
+    mode = getenv("BPF_JIT");
+    //printf("MODE : %d\n", atoi(mode));
+    if (atoi(mode) == 0)
+    {
+        return;
+    }
+
+    if (atoi(mode) == 1)
+    {
+        bpf_jit_enable = 1;
+    }
+
+    if (atoi(mode) == 2)
+    {
+        bpf_jit_enable = 2;
+    }
 
     if (!bpf_jit_enable)
         return;

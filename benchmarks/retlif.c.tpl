@@ -13,10 +13,21 @@
 
 #include "filter.h"
 
+/* Define tracepoint event */
+#define TRACEPOINT_DEFINE
+#define TRACEPOINT_CREATE_PROBES
+#include "retlif_tp.h"
+
+#define tic() do { struct timespec ts_start, ts_end; clock_gettime(CLOCK_MONOTONIC, &ts_start)
+#define toc() clock_gettime(CLOCK_MONOTONIC, &ts_end); \
+              printf("%lf\n", (ts_end.tv_sec - ts_start.tv_sec) + (double)(ts_end.tv_nsec - ts_start.tv_nsec)/1e9); } \
+                            while (0)
+
 /* Global definitions */
 struct bpf_prog *prog;
 struct bpf_insn *insn_prog;
 int prog_size = 0;
+unsigned long NR_RUNS = 0;
 
 static void  *u64_to_ptr(__u64 val){
     return (void *) (unsigned long) val;
@@ -159,7 +170,7 @@ unsigned int init_ebpf_prog(void)
 
     // ready for JIT
     bpf_prog_select_runtime(prog);
-    printf("JITed? : %d\n", prog->jited);
+    //printf("JITed? : %d\n", prog->jited);
 
     /* set context values */
     return ret;
@@ -167,10 +178,9 @@ unsigned int init_ebpf_prog(void)
 
 unsigned int run_bpf_filt(struct filt_args *fargs)
 {
+    unsigned int ret = 0;
     struct bpf_context bctx = {};
     bctx.arg1 = (__u64) fargs;
-
-    unsigned int ret = 0;
     ret = filter(prog, &bctx);
     return ret;
 }
@@ -198,11 +208,13 @@ unsigned int run_simple_filt(struct filt_args *fargs)
 void cleanup(void)
 {
     bpf_prog_free(prog);
-    return 0;
 }
 
 int main(int argc, char **argv)
 {
+    int i;
+    NR_RUNS = atoi(getenv("NR_RUNS"));
+
     struct filt_args *args = (struct filt_args *) malloc (sizeof(struct filt_args));
 {% for num in range(n) %}
     args->str{{ num }} = "str{{ num }}";
@@ -216,12 +228,18 @@ int main(int argc, char **argv)
 
     if (strcmp(argv[1],  "BPF") == 0)
     {
-        printf("Running BPF..\n");
+        //printf("Running BPF..\n");
         /* Prepare eBPF prog*/
         int ret = init_ebpf_prog();
-        ret = run_bpf_filt(args);
+        tic();
+        for (i=0; i<NR_RUNS; i++)
+        {
+            ret = run_bpf_filt(args);
+        }
+        toc();
         if (ret == 1){
             printf("True\n");
+            tracepoint(retlif_tp, tptest);
         }
         else {
             printf("False\n");
@@ -234,16 +252,37 @@ int main(int argc, char **argv)
 
     if (strcmp(argv[1],  "SIMPLE") == 0)
     {
-        printf("Running SIMPLE..\n");
-        int ret = run_simple_filt(args);
+        //printf("Running SIMPLE..\n");
+        int ret = 0;
+        tic();
+        for (i=0; i<NR_RUNS; i++)
+        {
+            ret = run_simple_filt(args);
+        }
+        toc();
         if (ret == 1){
             printf("True\n");
+            tracepoint(retlif_tp, tptest);
         }
         else {
             printf("False\n");
         }
-       return 0;
+        return 0;
     }
+
+    if (strcmp(argv[1],  "CLEAN") == 0)
+    {
+        //printf("Running CLEAN..\n");
+        int ret = 0;
+        tic();
+        for (i=0; i<NR_RUNS; i++)
+        {
+            tracepoint(retlif_tp, tptest);
+        }
+        toc();
+        return 0;
+    }
+
     printf("Check args..\n");
 }
 

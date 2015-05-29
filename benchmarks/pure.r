@@ -54,8 +54,22 @@ ebpfjit1M <- mean(ebpfjit1M)
 ebpf1M <- as.numeric(c(raw1M$V3[2:21]))
 ebpf1M <- mean(ebpf1M)
 
+# Calculate per filter run value based on 1M runs data
+per_event_simple_ns <- (simple1M/1000000)*10e8
+per_event_ebpfjit_ns <- (ebpfjit1M/1000000)*10e8
+per_event_ebpf_ns <- (ebpf1M/1000000)*10e8
+
+# Calculate overhead
+ebpf_overhead <- per_event_ebpf_ns/per_event_simple_ns
+ebpfjit_overhead <- per_event_ebpfjit_ns/per_event_simple_ns
+jit_vs_interpreted <- per_event_ebpf_ns/per_event_ebpfjit_ns
+cat(sprintf("Interpreted eBPF is %.2f times slower than hardcoded filter\n", ebpf_overhead))
+cat(sprintf("JITed eBPF is %.2f times slower than hardcoded filter\n", ebpfjit_overhead))
+cat(sprintf("JITed eBPF is %.2f times faster than interpreted eBPF filter\n", jit_vs_interpreted))
+
+
 # Prepare merged dataset
-type <- c("eBPF", "eBPF_JIT", "Simple")
+type <- c("eBPF", "eBPF_JIT", "Hardcoded")
 hundredK <- c(simple100K, ebpfjit100K, ebpf100K)
 fivehundredK <- c(simple500K, ebpfjit500K, ebpf500K)
 oneM <- c(simple1M, ebpfjit1M, ebpf1M)
@@ -80,25 +94,23 @@ levels(dataset$type) <- rev(levels(dataset$type))
 ggplot(dataset, aes(x=variable, y=value, fill=type)) + 
   #geom_bar(colour="#333333", stat="identity", position="dodge") +
   geom_bar(stat="identity", position="dodge") +
-  ggtitle("Filter execution overhead") +
+  ggtitle(expression(atop("Pure filter execution overhead", atop(italic("50 predicates (strcmp), all TRUE"))))) +
   xlab("Execution Loops") +
-  ylab("Time(s)") +
+  ylab("Time(ns)") +
   theme(axis.title.x = element_text(face="bold", size=14, vjust=-0.5, colour="grey34"),
         axis.text.x  = element_text(size=12),
         axis.title.y = element_text(face="bold", size=14, vjust=1, colour="grey34"),
         axis.text.y  = element_text(size=12)) +
-  theme(plot.title = element_text(lineheight=1, size = 18, face="bold", vjust=2, colour="grey34")) +
+  theme(plot.title = element_text(lineheight=1, size = 18, face="bold", vjust=1, colour="grey34")) +
   theme(legend.title = element_blank(),
         legend.text = element_text(colour="grey34", size = 14)
   ) +
   #      legend.position = "bottom") +
   #scale_colour_brewer(breaks=c("eBPF", "eBPF_JIT", "Simple"),
   #                      labels=c("eBPF", "eBPF+JIT", "Simple"), palette="Set1") +
-  scale_colour_brewer(breaks=c("Simple", "eBPF_JIT", "eBPF"),
-                    labels=c("Simple", "eBPF+JIT", "eBPF"), palette="Set1") +
+  scale_colour_brewer(breaks=c("Hardcoded", "eBPF_JIT", "eBPF"),
+                    labels=c("Hardcoded", "eBPF+JIT", "eBPF"), palette="Set1") +
   #scale_fill_brewer(breaks=c("eBPF", "eBPF_JIT", "Simple"),
   #                    labels=c("eBPF", "eBPF+JIT", "Simple"), palette="Set1")
-  scale_fill_brewer(breaks=c("Simple", "eBPF_JIT", "eBPF"),
-                        labels=c("Simple", "eBPF+JIT", "eBPF"), palette="Set1")
-
-
+  scale_fill_brewer(breaks=c("Hardcoded", "eBPF_JIT", "eBPF"),
+                        labels=c("Hardcoded", "eBPF+JIT", "eBPF"), palette="Set1")

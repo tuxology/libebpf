@@ -431,7 +431,7 @@ Copyright (C) 2012 Free Software Foundation, Inc.
 This config.status script is free software; the Free Software Foundation
 gives unlimited permission to copy, distribute and modify it."
 
-ac_pwd='/home/suchakra/Projects/repos/libebpf'
+ac_pwd='/home/suchakra/experiments/libebpf'
 srcdir='.'
 INSTALL='/usr/bin/install -c'
 MKDIR_P='/usr/bin/mkdir -p'
@@ -658,7 +658,7 @@ finish_cmds='PATH="\$PATH:/sbin" ldconfig -n $libdir'
 finish_eval=''
 hardcode_into_libs='yes'
 sys_lib_search_path_spec='/usr/lib/gcc/x86_64-redhat-linux/4.8.3 /usr/lib64 /lib64 '
-sys_lib_dlsearch_path_spec='/lib64 /usr/lib64 /lib /usr/lib /usr/lib64/R/lib /usr/lib64/atlas /usr/lib64/dyninst /usr/lib64/iscsi /usr/lib/llvm /usr/lib64/llvm /usr/local/lib/ /usr/lib64/mysql /usr/lib64/qt-3.3/lib /usr/lib64/tcl8.5 /usr/lib64/xulrunner '
+sys_lib_dlsearch_path_spec='/lib64 /usr/lib64 /lib /usr/lib /usr/lib64/dyninst /usr/lib64/iscsi /usr/lib64/llvm /usr/local/lib /usr/lib64/tracker-0.16 /usr/lib64/xulrunner '
 hardcode_action='immediate'
 enable_dlopen='unknown'
 enable_dlopen_self='unknown'
@@ -865,12 +865,12 @@ S["mkdir_p"]="$(MKDIR_P)"
 S["MKDIR_P"]="/usr/bin/mkdir -p"
 S["INSTALL_STRIP_PROGRAM"]="$(install_sh) -c -s"
 S["STRIP"]="strip"
-S["install_sh"]="${SHELL} /home/suchakra/Projects/repos/libebpf/install-sh"
-S["MAKEINFO"]="${SHELL} /home/suchakra/Projects/repos/libebpf/missing makeinfo"
-S["AUTOHEADER"]="${SHELL} /home/suchakra/Projects/repos/libebpf/missing autoheader"
-S["AUTOMAKE"]="${SHELL} /home/suchakra/Projects/repos/libebpf/missing automake-1.13"
-S["AUTOCONF"]="${SHELL} /home/suchakra/Projects/repos/libebpf/missing autoconf"
-S["ACLOCAL"]="${SHELL} /home/suchakra/Projects/repos/libebpf/missing aclocal-1.13"
+S["install_sh"]="${SHELL} /home/suchakra/experiments/libebpf/install-sh"
+S["MAKEINFO"]="${SHELL} /home/suchakra/experiments/libebpf/missing makeinfo"
+S["AUTOHEADER"]="${SHELL} /home/suchakra/experiments/libebpf/missing autoheader"
+S["AUTOMAKE"]="${SHELL} /home/suchakra/experiments/libebpf/missing automake-1.13"
+S["AUTOCONF"]="${SHELL} /home/suchakra/experiments/libebpf/missing autoconf"
+S["ACLOCAL"]="${SHELL} /home/suchakra/experiments/libebpf/missing aclocal-1.13"
 S["VERSION"]="0.1"
 S["PACKAGE"]="libebpf"
 S["CYGPATH_W"]="echo"

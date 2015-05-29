@@ -1,12 +1,17 @@
 #!/bin/bash
 
-NR_STR=50
+NR_STR=9
 
 echo "Generating Filters..."
 echo
 python generator.py filter.c.tpl filter.c $NR_STR
 python generator.py filter.h.tpl filter.h $NR_STR
 python generator.py retlif.c.tpl retlif.c $NR_STR
+python generator.py retlif-lttng_tp.h.tpl retlif-lttng_tp.h $NR_STR
+python generator.py retlif-lttng.c.tpl retlif-lttng.c $NR_STR
+python generator.py overhead-lttng.sh.tpl overhead-lttng.sh $NR_STR
+
+chmod +x overhead-lttng.sh
 
 echo "Building Filter..."
 echo

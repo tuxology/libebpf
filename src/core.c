@@ -40,6 +40,7 @@
 #include <include/bpf.h>
 #include <include/filter.h>
 #include <sys/mman.h>
+#include <fcntl.h>
 
 /* Registers */
 #define BPF_R0	regs[BPF_REG_0]
@@ -98,6 +99,22 @@ void *bpf_internal_load_pointer_neg_helper(const struct sk_buff *skb, int k, uns
     return NULL;
 }
 #endif
+
+/* Structs for UeBPF-KeBPF trial*/
+struct procdat
+{
+    int thresh;
+    int miss;
+};
+
+
+struct mmap_info
+{
+    void *data;
+    unsigned int thresh;
+    int reference;
+};
+
 
 struct bpf_prog *bpf_prog_alloc(unsigned int size)
 {
@@ -233,6 +250,31 @@ static void bpf_dummy(__u64 r1, __u64 r2, __u64 r3, __u64 r4, __u64 r5)
     printf("In bpf_dummy\n");
 }
 
+static void bpf_set_threshold(__u64 r1, __u64 r2, __u64 r3, __u64 r4, __u64 r5)
+{
+    int configfd;
+    struct procdat *address = NULL;
+
+    configfd = open("/sys/kernel/debug/ebpflttng", O_RDWR);
+    if(configfd < 0)
+    {
+        perror("Open call failed");
+        return -1;
+    }
+
+    address = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, configfd, 0);
+    if (address == MAP_FAILED)
+    {
+        perror("mmap operation failed");
+        return -1;
+    }
+
+    printf("Thresh %d\n", address->thresh);
+    address->thresh = (unsigned int) r1;
+    printf("New Thresh %d\n", address->thresh);
+    close(configfd);
+}
+
 static struct bpf_func_proto filter_funcs[] = { 
     [BPF_FUNC_memcmp] = {
         .func = bpf_memcmp,
@@ -254,6 +296,12 @@ static struct bpf_func_proto filter_funcs[] = {
         .func = bpf_dummy,
         .gpl_only = 0,
         .ret_type = RET_VOID,
+    },
+    [BPF_FUNC_set_threshold] = {
+        .func = bpf_set_threshold,
+        .gpl_only = 0,
+        .ret_type = RET_VOID,
+        .arg1_type = ARG_ANYTHING,
     },
 };
 

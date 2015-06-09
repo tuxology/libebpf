@@ -144,7 +144,7 @@ int load_bpf_file(char *path)
             //load_and_attach(shname, data->d_buf, data->d_size);
             insn_prog = (struct insn_prog *) data->d_buf;
             prog_size = data->d_size;
-            printf("section name %s, data %p, size %d\n", shname, data->d_buf, data->d_size);
+            //printf("section name %s, data %p, size %d\n", shname, data->d_buf, data->d_size);
         }
     }
 #endif
@@ -265,8 +265,9 @@ int main(int argv, char **argc)
     //printf("[filter arguments] value of dev %lu\n", args->dev);
 
 /*Register using ioctl*/
-int ioctl_ret = lttngprofile_module_register(100000);
-
+int ioctl_ret = lttngprofile_module_register(1);
+//nanosleep(1000);
+//getpid();
     /* Prepare eBPF prog*/
     int ret = init_ebpf_prog();
     ret = run_filt(args);
@@ -275,7 +276,7 @@ int ioctl_ret = lttngprofile_module_register(100000);
 
 /*Unregister using ioctl*/
 ioctl_ret = lttngprofile_module_unregister();
-
+#if 0
 /*
  * Shared memory KeBPF <--> UeBPF trial
  */
@@ -296,13 +297,7 @@ ioctl_ret = lttngprofile_module_unregister();
         perror("mmap operation failed");
         return -1;
     }
-#if 0
-    unsigned int thresh = 43;
-    printf("Message %s\n", address);
-    printf("Old Thresh %u\n", *(unsigned int*)(address+32));
-    memcpy(address + 32 , &thresh, sizeof(unsigned int));
-    printf("New Thresh %u\n", *(unsigned int*)(address+32));
-#endif
+    
     printf("Thresh %d\n", address->thresh);
     address->thresh = 24;
     printf("New Thresh %d\n", address->thresh);
@@ -311,6 +306,7 @@ ioctl_ret = lttngprofile_module_unregister();
     printf("New Miss %d\n", address->miss);
     //save_page("./page.page", address);
     close(configfd);
-    return 0;
+#endif
+   return 0;
 }
 

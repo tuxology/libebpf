@@ -170,6 +170,7 @@ enum bpf_func_id {
 	BPF_FUNC_memcmp,          /* int bpf_memcmp(void *unsafe_ptr, void *safe_ptr, int size) */
     BPF_FUNC_dummy,
     BPF_FUNC_strcmp,
+    BPF_FUNC_set_threshold,
 	__BPF_FUNC_MAX_ID,
 };
 

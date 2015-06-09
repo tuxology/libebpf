@@ -5,9 +5,12 @@ filter:                                 # @filter
 # BB#0:
 	mov	r2, 3239269
 	stw	-4(r10), r2
-	ldd	r1, 0(r1)
+	ldd	r6, 0(r1)
+	mov	r1, 9999
+	call	4
 	mov	r2, r10
 	addi	r2, -4
+	mov	r1, r6
 	call	3
 	mov	r1, r0
 	slli	r1, 32

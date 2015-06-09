@@ -232,12 +232,12 @@ static __u64 bpf_strcmp(__u64 r1, __u64 r2, __u64 r3, __u64 r4, __u64 r5)
     return strcmp(ptr1, ptr2);
 }
 
-static void bpf_dummy(__u64 r1, __u64 r2, __u64 r3, __u64 r4, __u64 r5)
+static __u64 bpf_dummy(__u64 r1, __u64 r2, __u64 r3, __u64 r4, __u64 r5)
 {
     printf("In bpf_dummy\n");
 }
 
-static void bpf_set_threshold(__u64 r1, __u64 r2, __u64 r3, __u64 r4, __u64 r5)
+static __u64 bpf_set_threshold(__u64 r1, __u64 r2, __u64 r3, __u64 r4, __u64 r5)
 {
     int configfd;
     struct procdat *address = NULL;

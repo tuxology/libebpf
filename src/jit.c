@@ -1,4 +1,6 @@
-/* bpf_jit_comp.c : BPF JIT compiler
+/* Userspace BPF JIT compiler (x86_64)
+ *
+ * Suchakra Sharma <suchakrapani.sharma@polymtl.ca>
  *
  * Copyright (C) 2011-2013 Eric Dumazet (eric.dumazet@gmail.com)
  * Internal BPF Copyright (c) 2011-2014 PLUMgrid, http://plumgrid.com
@@ -9,15 +11,6 @@
  * of the License.
  */
 
-/*
-#include <linux/netdevice.h>
-#include <linux/filter.h>
-#include <linux/if_vlan.h>
-#include <asm/cacheflush.h>
-#include <math.h>
-#include <string.h>
-*/
-
 // Allow JITing
 #define CONFIG_BPF_JIT 1
 
@@ -27,29 +20,15 @@
 #include <math.h>
 #include <string.h>
 #include <errno.h>
-#include <include/bpf.h>
-#include <include/filter.h>
+#include <bpf.h>
+#include <filter.h>
 #include <sys/user.h>
 #include <sys/mman.h>
 
-//#define __read_mostly __attribute__((__section__(".data..read_mostly")))
 #define unlikely(x)     __builtin_expect(!!(x), 0)
-
-//int bpf_jit_enable __read_mostly;
 
 // 0 for no jit, 1 for jit w/o debug, 2 for JIT with jited code dump
 int bpf_jit_enable = 2;
-
-/*
- * assembly code in bpf_jit.S
- */
-#if 0
-extern __u8 sk_load_word[], sk_load_half[], sk_load_byte[];
-extern __u8 sk_load_word_positive_offset[], sk_load_half_positive_offset[];
-extern __u8 sk_load_byte_positive_offset[];
-extern __u8 sk_load_word_negative_offset[], sk_load_half_negative_offset[];
-extern __u8 sk_load_byte_negative_offset[];
-#endif
 
 static inline __u8 *emit_code(__u8 *ptr, __u32 bytes, unsigned int len)
 {
@@ -60,7 +39,6 @@ static inline __u8 *emit_code(__u8 *ptr, __u32 bytes, unsigned int len)
     else {
         *(__u32 *)ptr = bytes;
         __sync_synchronize();
-        // barrier();
     }
     return ptr + len;
 }
@@ -121,18 +99,6 @@ static int bpf_size_to_x86_bytes(int bpf_size)
 #define X86_JA  0x77
 #define X86_JGE 0x7D
 #define X86_JG  0x7F
-
-#if 0
-static inline void bpf_flush_icache(void *start, void *end)
-{
-    mm_segment_t old_fs = get_fs();
-
-    set_fs(KERNEL_DS);
-    smp_wmb();
-    flush_icache_range((unsigned long)start, (unsigned long)end);
-    set_fs(old_fs);
-}
-#endif
 
 #define CHOOSE_LOAD_FUNC(K, func) \
     ((int)K < 0 ? ((int)K >= SKF_LL_OFF ? func##_negative_offset : func) : func##_positive_offset)
@@ -254,39 +220,6 @@ static int do_jit(struct bpf_prog *bpf_prog, int *addrs, __u8 *image,
     /* clear A and X registers */
     EMIT2(0x31, 0xc0); /* xor eax, eax */
     EMIT3(0x4D, 0x31, 0xED); /* xor r13, r13 */
-
-#if 0
-    if (ctx->seen_ld_abs) {
-        /* r9d : skb->len - skb->data_len (headlen)
-         * r10 : skb->data
-         */
-        if (is_imm8(offsetof(struct sk_buff, len)))
-            /* mov %r9d, off8(%rdi) */
-            EMIT4(0x44, 0x8b, 0x4f,
-                    offsetof(struct sk_buff, len));
-        else
-            /* mov %r9d, off32(%rdi) */
-            EMIT3_off32(0x44, 0x8b, 0x8f,
-                    offsetof(struct sk_buff, len));
-
-        if (is_imm8(offsetof(struct sk_buff, data_len)))
-            /* sub %r9d, off8(%rdi) */
-            EMIT4(0x44, 0x2b, 0x4f,
-                    offsetof(struct sk_buff, data_len));
-        else
-            EMIT3_off32(0x44, 0x2b, 0x8f,
-                    offsetof(struct sk_buff, data_len));
-
-        if (is_imm8(offsetof(struct sk_buff, data)))
-            /* mov %r10, off8(%rdi) */
-            EMIT4(0x4c, 0x8b, 0x57,
-                    offsetof(struct sk_buff, data));
-        else
-            /* mov %r10, off32(%rdi) */
-            EMIT3_off32(0x4c, 0x8b, 0x97,
-                    offsetof(struct sk_buff, data));
-    }
-#endif
 
     for (i = 0; i < insn_cnt; i++, insn++) {
         const __s32 imm32 = insn->imm;
@@ -824,14 +757,7 @@ emit_jmp:
                     return -EFAULT;
                 }
                 break;
-/* We don't use this */
-#if 0
-            case BPF_LD | BPF_IND | BPF_W:
-                func = sk_load_word;
-                goto common_load;
-            case BPF_LD | BPF_ABS | BPF_W:
-                func = CHOOSE_LOAD_FUNC(imm32, sk_load_word);
-#endif
+
 common_load:		ctx->seen_ld_abs = 1;
                     jmp_offset = func - (image + addrs[i]);
                     if (!func || !is_simm32(jmp_offset)) {
@@ -861,21 +787,7 @@ common_load:		ctx->seen_ld_abs = 1;
                      */
                     EMIT1_off32(0xE8, jmp_offset); /* call */
                     break;
-/*Stop supporting these instructions*/
-#if 0
-            case BPF_LD | BPF_IND | BPF_H:
-                    func = sk_load_half;
-                    goto common_load;
-            case BPF_LD | BPF_ABS | BPF_H:
-                    func = CHOOSE_LOAD_FUNC(imm32, sk_load_half);
-                    goto common_load;
-            case BPF_LD | BPF_IND | BPF_B:
-                    func = sk_load_byte;
-                    goto common_load;
-            case BPF_LD | BPF_ABS | BPF_B:
-                    func = CHOOSE_LOAD_FUNC(imm32, sk_load_byte);
-                    goto common_load;
-#endif
+
             case BPF_JMP | BPF_EXIT:
                     if (i != insn_cnt - 1) {
                         jmp_offset = ctx->cleanup_addr - addrs[i];
@@ -938,7 +850,6 @@ void bpf_int_jit_compile(struct bpf_prog *prog)
     /* Get filter mode from env*/
     char *mode;
     mode = getenv("BPF_JIT");
-    //printf("MODE : %d\n", atoi(mode));
     if (atoi(mode) == 0)
     {
         return;
@@ -961,7 +872,6 @@ void bpf_int_jit_compile(struct bpf_prog *prog)
         return;
 
     addrs = malloc(prog->len * sizeof(*addrs));
-    //printf("JIT: addrs %p\n", addrs);
     if (!addrs)
         return;
 
@@ -991,7 +901,6 @@ void bpf_int_jit_compile(struct bpf_prog *prog)
         if (proglen == oldproglen) {
             header = bpf_jit_binary_alloc(proglen, &image,
                     1, jit_fill_hole);
-            //printf("JIT: header %p\n", header);
             if (!header)
                 goto out;
         }
@@ -1002,7 +911,6 @@ void bpf_int_jit_compile(struct bpf_prog *prog)
         bpf_jit_dump(prog->len, proglen, 0, image);
 
     if (image) {
-        //bpf_flush_icache(header, image + proglen);
         size_t size = header->pages * getpagesize();
         mprotect((void*)header, size, PROT_READ | PROT_EXEC);
         prog->bpf_func = (void *)image;
@@ -1020,9 +928,7 @@ void bpf_jit_free(struct bpf_prog *fp)
     if (!fp->jited)
         goto free_filter;
     size_t size = header->pages * getpagesize();
-    //set_memory_rw(addr, header->pages);
     mprotect((void*)addr, size, PROT_READ | PROT_WRITE | PROT_EXEC);
-    //bpf_jit_binary_free(header);
 
 free_filter:
     bpf_prog_unlock_free(fp);

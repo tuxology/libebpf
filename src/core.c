@@ -1,35 +1,27 @@
 /*
- * Linux Socket Filter - Kernel level socket filtering
+ * Userspace eBPF Core
+ * -------------------
  *
- * Based on the design of the Berkeley Packet Filter. The new
- * internal format has been designed by PLUMgrid:
+ * Adapted from the new Kernel eBPF implementation designed by PLUMgrid.
+ * Experimental release without verifier, useful only for tracing.
  *
- *	Copyright (c) 2011 - 2014 PLUMgrid, http://plumgrid.com
+ * Suchakra Sharma <suchakrapani.sharma@polymtl.ca>
  *
- * Authors:
+ * Original Kernel BPF Authors:
+ *    Jay Schulist <jschlst@samba.org>
+ *	  Alexei Starovoitov <ast@plumgrid.com>
+ *	  Daniel Borkmann <dborkman@redhat.com>
  *
- *	Jay Schulist <jschlst@samba.org>
- *	Alexei Starovoitov <ast@plumgrid.com>
- *	Daniel Borkmann <dborkman@redhat.com>
+ * Other Contributors:
+ *	  Andi Kleen - Fix a few bad bugs and races.
+ *    Kris Katterjohn - Added many additional checks in bpf_check_classic()
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version
  * 2 of the License, or (at your option) any later version.
  *
- * Andi Kleen - Fix a few bad bugs and races.
- * Kris Katterjohn - Added many additional checks in bpf_check_classic()
  */
-
-/*
-#include <linux/filter.h>
-#include <linux/skbuff.h>
-#include <linux/vmalloc.h>
-#include <linux/random.h>
-#include <linux/moduleloader.h>
-#include <asm/unaligned.h>
-#include <linux/bpf.h>
-*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,8 +29,8 @@
 #include <math.h>
 #include <string.h>
 #include <errno.h>
-#include <include/bpf.h>
-#include <include/filter.h>
+#include <bpf.h>
+#include <filter.h>
 #include <sys/mman.h>
 #include <fcntl.h>
 
@@ -76,6 +68,7 @@
 #define __force        __attribute__((force))
 #define __weak __attribute__((weak))
 #define PAGE_SIZE getpagesize()
+
 /* No hurry in this branch
  *
  * Exported for the bpf jit load helper.
@@ -106,7 +99,6 @@ struct procdat
     int thresh;
     int miss;
 };
-
 
 struct mmap_info
 {
@@ -164,14 +156,12 @@ struct bpf_prog *bpf_prog_realloc(struct bpf_prog *fp_old, unsigned int size)
 
     return fp;
 }
-//EXPORT_SYMBOL_GPL(bpf_prog_realloc);
 
 void __bpf_prog_free(struct bpf_prog *fp)
 {
     free(fp->aux);
     free(fp);
 }
-//EXPORT_SYMBOL_GPL(__bpf_prog_free);
 
 #ifdef CONFIG_BPF_JIT
 void* alloc_mmap(size_t size) {
@@ -199,8 +189,6 @@ bpf_jit_binary_alloc(unsigned int proglen, __u8 **image_ptr,
      */
     size = ROUND_UP(proglen + sizeof(*hdr) + 128, PAGE_SIZE);
     hdr = alloc_mmap(size);
-    //hdr = malloc(size);
-    //printf("CORE: hdr %p\n", hdr);
     if (hdr == NULL)
         return NULL;
 
@@ -220,7 +208,6 @@ bpf_jit_binary_alloc(unsigned int proglen, __u8 **image_ptr,
 
 void bpf_jit_binary_free(struct bpf_binary_header *hdr)
 {
-    //module_free(NULL, hdr);
     free(hdr);
 }
 #endif /* CONFIG_BPF_JIT */
@@ -319,19 +306,13 @@ void fixup_bpf_calls(struct bpf_prog *prog)
     const struct bpf_func_proto *fn;
     int i;
 
-    //prog->aux->ops->get_func_proto = func_proto;
-
     for (i = 0; i < prog->len; i++){
         struct bpf_insn *insn = &prog->insnsi[i];
         if (insn->code == (BPF_JMP | BPF_CALL)){
-//           if (!prog->aux->ops->get_func_proto)
-//               printf("No get_func_proto!\n");
-//            fn = prog->aux->ops->get_func_proto(insn->imm);
             fn = func_proto(insn->imm);
             if (!fn->func)
                 printf("No func!\n");
             insn->imm = fn->func - __bpf_call_base;
-            //printf("CORE: insn->imm %d\n", insn->imm);
         }
     }
 }
@@ -447,13 +428,6 @@ static unsigned int __bpf_prog_run(void *ctx, const struct bpf_insn *insn)
         [BPF_LDX | BPF_MEM | BPF_H] = &&LDX_MEM_H,
         [BPF_LDX | BPF_MEM | BPF_W] = &&LDX_MEM_W,
         [BPF_LDX | BPF_MEM | BPF_DW] = &&LDX_MEM_DW,
-        /* Disable skb specific loads. Don't use skb as context for now */
-        //        [BPF_LD | BPF_ABS | BPF_W] = &&LD_ABS_W,
-        //        [BPF_LD | BPF_ABS | BPF_H] = &&LD_ABS_H,
-        //        [BPF_LD | BPF_ABS | BPF_B] = &&LD_ABS_B,
-        //        [BPF_LD | BPF_IND | BPF_W] = &&LD_IND_W,
-        //        [BPF_LD | BPF_IND | BPF_H] = &&LD_IND_H,
-        //        [BPF_LD | BPF_IND | BPF_B] = &&LD_IND_B,
         [BPF_LD | BPF_IMM | BPF_DW] = &&LD_IMM_DW,
     };
     void *ptr;
@@ -714,78 +688,7 @@ JMP_EXIT:
         atomic_add((__u32) SRC, (atomic_t *)(unsigned long)
                 (DST + insn->off));
     CONT;
-#if 0
-STX_XADD_DW: /* lock xadd *(u64 *)(dst_reg + off16) += src_reg */
-    atomic64_add((__u64) SRC, (atomic64_t *)(unsigned long)
-            (DST + insn->off));
-    CONT;
-#endif
 
-    /* Don't use them for now. So we can't have ctx = skb. ONly trace filtering*/
-#if 0
-LD_ABS_W: /* BPF_R0 = ntohl(*(u32 *) (skb->data + imm32)) */
-    off = IMM;
-load_word:
-    /* BPF_LD + BPD_ABS and BPF_LD + BPF_IND insns are
-     * only appearing in the programs where ctx ==
-     * skb. All programs keep 'ctx' in regs[BPF_REG_CTX]
-     * == BPF_R6, bpf_convert_filter() saves it in BPF_R6,
-     * internal BPF verifier will check that BPF_R6 ==
-     * ctx.
-     *
-     * BPF_ABS and BPF_IND are wrappers of function calls,
-     * so they scratch BPF_R1-BPF_R5 registers, preserve
-     * BPF_R6-BPF_R9, and store return value into BPF_R0.
-     *
-     * Implicit input:
-     *   ctx == skb == BPF_R6 == CTX
-     *
-     * Explicit input:
-     *   SRC == any register
-     *   IMM == 32-bit immediate
-     *
-     * Output:
-     *   BPF_R0 - 8/16/32-bit skb data converted to cpu endianness
-     */
-
-    ptr = bpf_load_pointer((struct sk_buff *) (unsigned long) CTX, off, 4, &tmp);
-    if (likely(ptr != NULL)) {
-        BPF_R0 = get_unaligned_be32(ptr);
-        CONT;
-    }
-
-    return 0;
-LD_ABS_H: /* BPF_R0 = ntohs(*(u16 *) (skb->data + imm32)) */
-    off = IMM;
-load_half:
-    ptr = bpf_load_pointer((struct sk_buff *) (unsigned long) CTX, off, 2, &tmp);
-    if (likely(ptr != NULL)) {
-        BPF_R0 = get_unaligned_be16(ptr);
-        CONT;
-    }
-
-    return 0;
-LD_ABS_B: /* BPF_R0 = *(u8 *) (skb->data + imm32) */
-    off = IMM;
-load_byte:
-    ptr = bpf_load_pointer((struct sk_buff *) (unsigned long) CTX, off, 1, &tmp);
-    if (likely(ptr != NULL)) {
-        BPF_R0 = *(__u8 *)ptr;
-        CONT;
-    }
-
-    return 0;
-LD_IND_W: /* BPF_R0 = ntohl(*(u32 *) (skb->data + src_reg + imm32)) */
-    off = IMM + SRC;
-    goto load_word;
-LD_IND_H: /* BPF_R0 = ntohs(*(u16 *) (skb->data + src_reg + imm32)) */
-    off = IMM + SRC;
-    goto load_half;
-LD_IND_B: /* BPF_R0 = *(u8 *) (skb->data + src_reg + imm32) */
-    off = IMM + SRC;
-    goto load_byte;
-
-#endif
 default_label:
     /* If we ever reach this, we have a bug somewhere. */
     printf("unknown opcode %02x\n", insn->code);
@@ -812,40 +715,11 @@ void bpf_prog_select_runtime(struct bpf_prog *fp)
     /* Lock whole bpf_prog as read-only */
     bpf_prog_lock_ro(fp);
 }
-//EXPORT_SYMBOL_GPL(bpf_prog_select_runtime);
-
-#if 0
-static void bpf_prog_free_deferred(struct work_struct *work)
-{
-    struct bpf_prog_aux *aux;
-
-    aux = container_of(work, struct bpf_prog_aux, work);
-    bpf_jit_free(aux->prog);
-}
-#endif
 
 /* Free internal BPF program */
 void bpf_prog_free(struct bpf_prog *fp)
 {
     struct bpf_prog_aux *aux = fp->aux;
-
-    //    INIT_WORK(&aux->work, bpf_prog_free_deferred);
     aux->prog = fp;
     bpf_jit_free(aux->prog);
-    //    schedule_work(&aux->work);
 }
-//EXPORT_SYMBOL_GPL(bpf_prog_free);
-
-/* To emulate LD_ABS/LD_IND instructions __sk_run_filter() may call
- * skb_copy_bits(), so provide a weak definition for it in NET-less config.
- * seccomp_check_filter() verifies that seccomp filters are not using
- * LD_ABS/LD_IND instructions. Other BPF users (like tracing filters)
- * must not use these instructions unless ctx==skb
- */
-#if 0
-int skb_copy_bits(const struct sk_buff *skb, int offset, void *to,
-        int len)
-{
-    return -EFAULT;
-}
-#endif

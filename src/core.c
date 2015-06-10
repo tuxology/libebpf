@@ -9,11 +9,11 @@
  *
  * Original Kernel BPF Authors:
  *    Jay Schulist <jschlst@samba.org>
- *	  Alexei Starovoitov <ast@plumgrid.com>
- *	  Daniel Borkmann <dborkman@redhat.com>
+ *    Alexei Starovoitov <ast@plumgrid.com>
+ *    Daniel Borkmann <dborkman@redhat.com>
  *
  * Other Contributors:
- *	  Andi Kleen - Fix a few bad bugs and races.
+ *    Andi Kleen - Fix a few bad bugs and races.
  *    Kris Katterjohn - Added many additional checks in bpf_check_classic()
  *
  * This program is free software; you can redistribute it and/or
@@ -75,23 +75,6 @@
  */
 
 #define CONFIG_BPF_JIT 1
-
-#if 0
-/*disabling skb to be used as context so we don't need this */
-void *bpf_internal_load_pointer_neg_helper(const struct sk_buff *skb, int k, unsigned int size)
-{
-    __u8 *ptr = NULL;
-
-    if (k >= SKF_NET_OFF)
-        ptr = skb_network_header(skb) + k - SKF_NET_OFF;
-    else if (k >= SKF_LL_OFF)
-        ptr = skb_mac_header(skb) + k - SKF_LL_OFF;
-    if (ptr >= skb->head && ptr + size <= skb_tail_pointer(skb))
-        return ptr;
-
-    return NULL;
-}
-#endif
 
 /* Structs for UeBPF-KeBPF trial*/
 struct procdat

@@ -74,6 +74,7 @@ int ebpf_shm_open(void *pargs)
 		perror("mmap operation failed");
 		return -1;
 	}
+	return 0;
 }
 
 int get_from_array(void *pargs)

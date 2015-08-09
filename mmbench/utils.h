@@ -10,7 +10,9 @@
 
 struct profile {
 	char *name;
+	int (*before)(void *args);
 	int (*func)(void *args);
+	int (*after)(void *args);
 	void *args;
 	int repeat;
 	double mean;

@@ -116,6 +116,15 @@ void profile_func(struct profile *prof)
 	int i;
 	struct timespec *data = prof->data;
 
+	if (prof->before) {
+		i = prof->before(prof);
+		if (i != 0) {
+			printf("skipping %s\n", prof->name);
+			return;
+		}
+	}
+
+
 	// warm
 	prof->func(prof->args);
 
@@ -123,6 +132,8 @@ void profile_func(struct profile *prof)
 		clock_gettime(CLOCK_MONOTONIC, &data[i]);
 		prof->func(prof->args);
 	}
+	 if (prof->after)
+		prof->after(prof);
 }
 
 void profile_stats(struct profile *prof)
@@ -162,6 +173,10 @@ void profile_save(struct profile *prof)
 	char *fname;
 	asprintf(&fname, "%s.csv", prof->name);
 	FILE *out = fopen(fname, "w");
+	if (out == NULL) {
+		printf("can't open output file %s\n", fname);
+		return;
+	}
 	fprintf(out, "iter;nsec;\n");
 	for (i = 0; i < prof->repeat - 1; i++) {
 		struct timespec delta = time_sub(&prof->data[i + 1], &prof->data[i]);

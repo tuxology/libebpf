@@ -33,6 +33,7 @@
 
 
 #define PAGE_SIZE     4096
+#define REPEAT 1000000
 
 struct procdat
 {
@@ -42,71 +43,101 @@ struct procdat
 };
 
 
-struct mmap_info
+struct profile_args
 {
-	struct procdat *data;
-	int reference;
+    struct procdat *data;
+    void *bare_mmap;
+    int configfd;
 };
 
-int configfd;
-struct procdat* addr = NULL;
-
-int ebpf_shm_open()
+int ebpf_shm_open(void *pargs)
 {
-	configfd = open("/sys/kernel/debug/ebpflttng", O_RDWR);
+	struct profile_args *args = pargs;
+	args->configfd = open("/sys/kernel/debug/ebpflttng", O_RDWR);
 
-	if(configfd < 0)
+	if(args->configfd < 0)
 	{
 		perror("Open call failed");
 		return -1;
 	}
 
-	addr = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, configfd, 0);
+	args->data = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, args->configfd, 0);
 
-	if (addr == MAP_FAILED)
+	if (args->data == MAP_FAILED)
 	{
 		perror("mmap operation failed");
 		return -1;
 	}
 }
 
-void ebpf_shm_close()
+int ebpf_shm_close(void *pargs)
 {
-	close(configfd);
+	struct profile_args *args = pargs;
+	close(args->configfd);
+	return 0;
 }
 
-int get_from_array()
+int get_from_array(void *addr)
 {
+    unsigned int *val = addr;
+    //struct profile_args *pargs = args;
 	volatile int temp;
 	int idx = 0;
 
 	for(idx = 0; idx <= 1000; idx++){
-		temp = addr->val[idx];
+		temp = val[idx];
 		idx++;
 	}
-
 	return 0;
 }
 
+int default_shm_open(void *pargs)
+{
+	struct profile_args *args = pargs;
+	args->bare_mmap = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, 0, 0);
+	return 0;
+}
+
+int default_shm_close(void *pargs)
+{
+	struct profile_args *args = pargs;
+	munmap(args->bare_mmap, PAGE_SIZE);
+	return 0;
+}
+
+
 int main(int argv, char **argc)
 {
+    	struct profile_args pargs;
 
-	int ioctl_ret = lttngprofile_module_register(1);
+	//int ioctl_ret = lttngprofile_module_register(1);
+	//ebpf_shm_open(&pargs);
 
-	ebpf_shm_open();
+    	unsigned int local_array[1000];
 
 	struct profile prof[] = {
 		{
 			.name = "get_from_array",
+			.before = ebpf_shm_open,
 			.func = get_from_array,
-			.repeat = 1000000,
+			.after = ebpf_shm_close,
+			.repeat = REPEAT,
+        		.args = pargs.data,
+		},
+		{
+			.name = "get_from_default_array",
+			.before = default_shm_open,
+			.func = get_from_array,
+			.after = default_shm_close,
+			.repeat = REPEAT,
+            		.args = pargs.bare_mmap,
 		},
 		{.name = NULL},
 	};
 
-	ebpf_shm_close();
+	//ebpf_shm_close();
 
-	ioctl_ret = lttngprofile_module_unregister();
+	//ioctl_ret = lttngprofile_module_unregister();
 
 	struct profile *curr;
 	for (curr = prof; curr->name != NULL; curr++) {

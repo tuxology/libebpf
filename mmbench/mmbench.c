@@ -53,6 +53,7 @@ struct profile_args
 int ebpf_shm_open(void *pargs)
 {
 	struct profile_args *args = pargs;
+	int ioctl_ret = lttngprofile_module_register(1);
 	args->configfd = open("/sys/kernel/debug/ebpflttng", O_RDWR);
 
 	if(args->configfd < 0)
@@ -74,13 +75,13 @@ int ebpf_shm_close(void *pargs)
 {
 	struct profile_args *args = pargs;
 	close(args->configfd);
+	int ioctl_ret = lttngprofile_module_unregister();
 	return 0;
 }
 
 int get_from_array(void *addr)
 {
-    unsigned int *val = addr;
-    //struct profile_args *pargs = args;
+	unsigned int *val = addr;
 	volatile int temp;
 	int idx = 0;
 
@@ -95,6 +96,7 @@ int default_shm_open(void *pargs)
 {
 	struct profile_args *args = pargs;
 	args->bare_mmap = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, 0, 0);
+	memset(args->bare_mmap, 0, PAGE_SIZE);
 	return 0;
 }
 
@@ -110,10 +112,7 @@ int main(int argv, char **argc)
 {
     	struct profile_args pargs;
 
-	//int ioctl_ret = lttngprofile_module_register(1);
-	//ebpf_shm_open(&pargs);
 
-    	unsigned int local_array[1000];
 
 	struct profile prof[] = {
 		{
@@ -122,7 +121,7 @@ int main(int argv, char **argc)
 			.func = get_from_array,
 			.after = ebpf_shm_close,
 			.repeat = REPEAT,
-        		.args = pargs.data,
+        		.args = pargs.data->val,
 		},
 		{
 			.name = "get_from_default_array",
@@ -134,10 +133,6 @@ int main(int argv, char **argc)
 		},
 		{.name = NULL},
 	};
-
-	//ebpf_shm_close();
-
-	//ioctl_ret = lttngprofile_module_unregister();
 
 	struct profile *curr;
 	for (curr = prof; curr->name != NULL; curr++) {

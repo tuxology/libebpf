@@ -117,7 +117,7 @@ void profile_func(struct profile *prof)
 	struct timespec *data = prof->data;
 
 	if (prof->before) {
-		i = prof->before(prof);
+		i = prof->before(prof->args);
 		if (i != 0) {
 			printf("skipping %s\n", prof->name);
 			return;
@@ -133,7 +133,7 @@ void profile_func(struct profile *prof)
 		prof->func(prof->args);
 	}
 	 if (prof->after)
-		prof->after(prof);
+		prof->after(prof->args);
 }
 
 void profile_stats(struct profile *prof)

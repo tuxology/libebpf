@@ -87,8 +87,8 @@ int get_from_array(void *addr)
 
 	for(idx = 0; idx <= 1000; idx++){
 		temp = val[idx];
-		idx++;
 	}
+
 	return 0;
 }
 

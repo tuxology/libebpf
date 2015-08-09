@@ -167,9 +167,11 @@ enum bpf_func_id {
 	BPF_FUNC_ktime_get_ns,    /* u64 bpf_ktime_get_ns(void) */
 	BPF_FUNC_get_current,     /* struct task_struct *bpf_get_current(void) */
 #endif
-	BPF_FUNC_memcmp,          /* int bpf_memcmp(void *unsafe_ptr, void *safe_ptr, int size) */
+    BPF_FUNC_memcmp,          /* int bpf_memcmp(void *unsafe_ptr, void *safe_ptr, int size) */
     BPF_FUNC_dummy,
     BPF_FUNC_strcmp,
+    BPF_FUNC_set_threshold,
+    BPF_FUNC_get_from_array,
 	__BPF_FUNC_MAX_ID,
 };
 

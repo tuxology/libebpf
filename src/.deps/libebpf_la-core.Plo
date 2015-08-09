@@ -42,7 +42,9 @@ libebpf_la-core.lo: core.c /usr/include/stdc-predef.h \
  /usr/include/libudis86/itab.h /usr/include/libudis86/extern.h \
  /usr/include/libudis86/types.h /usr/include/libudis86/itab.h \
  ../include/uapi/filter.h ../include/uapi/bpf.h /usr/include/sys/mman.h \
- /usr/include/bits/mman.h /usr/include/bits/mman-linux.h
+ /usr/include/bits/mman.h /usr/include/bits/mman-linux.h \
+ /usr/include/fcntl.h /usr/include/bits/fcntl.h \
+ /usr/include/bits/fcntl-linux.h /usr/include/bits/stat.h
 
 /usr/include/stdc-predef.h:
 
@@ -223,3 +225,11 @@ libebpf_la-core.lo: core.c /usr/include/stdc-predef.h \
 /usr/include/bits/mman.h:
 
 /usr/include/bits/mman-linux.h:
+
+/usr/include/fcntl.h:
+
+/usr/include/bits/fcntl.h:
+
+/usr/include/bits/fcntl-linux.h:
+
+/usr/include/bits/stat.h:

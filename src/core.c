@@ -40,6 +40,7 @@
 #include <include/bpf.h>
 #include <include/filter.h>
 #include <sys/mman.h>
+#include <fcntl.h>
 
 /* Registers */
 #define BPF_R0	regs[BPF_REG_0]
@@ -98,6 +99,48 @@ void *bpf_internal_load_pointer_neg_helper(const struct sk_buff *skb, int k, uns
     return NULL;
 }
 #endif
+
+/* Structs for UeBPF-KeBPF trial*/
+
+struct procdat
+{
+	unsigned int val[1000];
+        unsigned int index;
+	int thresh;
+};
+
+
+struct mmap_info
+{
+    struct procdat *data;
+    int reference;
+};
+
+int configfd;
+struct procdat* addr = NULL;
+int globalindex = 0;
+
+void bpf_shm_open(__u64 r1, __u64 r2, __u64 r3, __u64 r4, __u64 r5)
+{
+    configfd = open("/sys/kernel/debug/ebpflttng", O_RDWR);
+    if(configfd < 0)
+    {
+        perror("Open call failed");
+        return -1;
+    }
+
+    addr = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, configfd, 0);
+    if (addr == MAP_FAILED)
+    {
+        perror("mmap operation failed");
+        return -1;
+    }
+}
+
+void bpf_shm_close(__u64 r1, __u64 r2, __u64 r3, __u64 r4, __u64 r5)
+{   
+    close(configfd);
+}
 
 struct bpf_prog *bpf_prog_alloc(unsigned int size)
 {
@@ -233,6 +276,25 @@ static void bpf_dummy(__u64 r1, __u64 r2, __u64 r3, __u64 r4, __u64 r5)
     printf("In bpf_dummy\n");
 }
 
+
+static void bpf_set_threshold(__u64 r1, __u64 r2, __u64 r3, __u64 r4, __u64 r5)
+{
+    printf("[UeBPF] Old Thresh %d\n", addr->thresh);
+    addr->thresh = (unsigned int) r1;
+    // use compiler barrier __sync_synchronize() compiler directive 
+    // to gurantee that surely r1 location is not changed
+    printf("[UeBPF] New Thresh %d\n", addr->thresh);
+}
+
+static __u64 bpf_get_from_array(__u64 r1, __u64 r2, __u64 r3, __u64 r4, __u64 r5)
+{
+    printf("[UeBPF] Getting %x from index %u\n", (unsigned long) addr->val[globalindex], globalindex);
+    globalindex++;
+    return (unsigned long) addr->val[globalindex];
+    // use compiler barrier __sync_synchronize() compiler directive 
+    // to gurantee that surely r1 location is not changed
+}
+
 static struct bpf_func_proto filter_funcs[] = { 
     [BPF_FUNC_memcmp] = {
         .func = bpf_memcmp,
@@ -254,6 +316,17 @@ static struct bpf_func_proto filter_funcs[] = {
         .func = bpf_dummy,
         .gpl_only = 0,
         .ret_type = RET_VOID,
+    },
+    [BPF_FUNC_set_threshold] = {
+        .func = bpf_set_threshold,
+        .gpl_only = 0,
+        .ret_type = RET_VOID,
+        .arg1_type = ARG_ANYTHING,
+    },
+    [BPF_FUNC_get_from_array] = {
+        .func = bpf_get_from_array,
+        .gpl_only = 0,
+        .ret_type = RET_INTEGER,
     },
 };
 
@@ -283,7 +356,7 @@ void fixup_bpf_calls(struct bpf_prog *prog)
             if (!fn->func)
                 printf("No func!\n");
             insn->imm = fn->func - __bpf_call_base;
-            //printf("CORE: insn->imm %d\n", insn->imm);
+//            printf("CORE: insn->imm %d\n", insn->imm);
         }
     }
 }

@@ -50,9 +50,14 @@ struct profile_args
     int configfd;
 };
 
+/*
+ * Read values from the kernel mmap
+ */
 int ebpf_shm_open(void *pargs)
 {
-	struct profile_args *args = pargs;
+	struct profile *prof = pargs;
+	struct profile_args *args = prof->args;
+
 	int ioctl_ret = lttngprofile_module_register(1);
 	args->configfd = open("/sys/kernel/debug/ebpflttng", O_RDWR);
 
@@ -71,17 +76,11 @@ int ebpf_shm_open(void *pargs)
 	}
 }
 
-int ebpf_shm_close(void *pargs)
+int get_from_array(void *pargs)
 {
-	struct profile_args *args = pargs;
-	close(args->configfd);
-	int ioctl_ret = lttngprofile_module_unregister();
-	return 0;
-}
-
-int get_from_array(void *addr)
-{
-	unsigned int *val = addr;
+	struct profile *prof = pargs;
+	struct profile_args *args = prof->args;
+	unsigned int *val = args->data->val;
 	volatile int temp;
 	int idx = 0;
 
@@ -92,17 +91,46 @@ int get_from_array(void *addr)
 	return 0;
 }
 
+int ebpf_shm_close(void *pargs)
+{
+	struct profile *prof = pargs;
+	struct profile_args *args = prof->args;
+	close(args->configfd);
+	int ioctl_ret = lttngprofile_module_unregister();
+	return 0;
+}
+
+/*
+ * Baseline benchmark with bare mmap
+ */
 int default_shm_open(void *pargs)
 {
-	struct profile_args *args = pargs;
+	struct profile *prof = pargs;
+	struct profile_args *args = prof->args;
 	args->bare_mmap = mmap(NULL, PAGE_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, 0, 0);
 	memset(args->bare_mmap, 0, PAGE_SIZE);
 	return 0;
 }
 
+int get_from_default_array(void *pargs)
+{
+	struct profile *prof = pargs;
+	struct profile_args *args = prof->args;
+	unsigned int *val = args->bare_mmap;
+	volatile int temp;
+	int idx = 0;
+
+	for(idx = 0; idx <= 1000; idx++){
+		temp = val[idx];
+	}
+
+	return 0;
+}
+
 int default_shm_close(void *pargs)
 {
-	struct profile_args *args = pargs;
+	struct profile *prof = pargs;
+	struct profile_args *args = prof->args;
 	munmap(args->bare_mmap, PAGE_SIZE);
 	return 0;
 }
@@ -112,8 +140,6 @@ int main(int argv, char **argc)
 {
     	struct profile_args pargs;
 
-
-
 	struct profile prof[] = {
 		{
 			.name = "get_from_array",
@@ -121,15 +147,15 @@ int main(int argv, char **argc)
 			.func = get_from_array,
 			.after = ebpf_shm_close,
 			.repeat = REPEAT,
-        		.args = pargs.data->val,
+			.args = &pargs,
 		},
 		{
 			.name = "get_from_default_array",
 			.before = default_shm_open,
-			.func = get_from_array,
+			.func = get_from_default_array,
 			.after = default_shm_close,
 			.repeat = REPEAT,
-            		.args = pargs.bare_mmap,
+			.args = &pargs,
 		},
 		{.name = NULL},
 	};

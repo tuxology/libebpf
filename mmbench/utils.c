@@ -117,23 +117,22 @@ void profile_func(struct profile *prof)
 	struct timespec *data = prof->data;
 
 	if (prof->before) {
-		i = prof->before(prof->args);
+		i = prof->before(prof);
 		if (i != 0) {
 			printf("skipping %s\n", prof->name);
 			return;
 		}
 	}
 
-
 	// warm
-	prof->func(prof->args);
+	prof->func(prof);
 
 	for (i = 0; i < prof->repeat; i++) {
 		clock_gettime(CLOCK_MONOTONIC, &data[i]);
-		prof->func(prof->args);
+		prof->func(prof);
 	}
 	 if (prof->after)
-		prof->after(prof->args);
+		prof->after(prof);
 }
 
 void profile_stats(struct profile *prof)

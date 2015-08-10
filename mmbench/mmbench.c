@@ -28,7 +28,7 @@
 
 #include <fcntl.h>
 #include <gelf.h>
-#include <uapi/linux/bpf.h>
+#include <linux/bpf.h>
 #include <sys/mman.h>
 #include "utils.h"
 

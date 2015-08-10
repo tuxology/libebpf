@@ -25,12 +25,14 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
-
+#include <assert.h>
 #include <fcntl.h>
 #include <gelf.h>
 #include <linux/bpf.h>
 #include <sys/mman.h>
 #include "utils.h"
+#include "bpf_load.h"
+#include <errno.h>
 
 #define PAGE_SIZE     4096
 #define REPEAT 1000000
@@ -143,10 +145,15 @@ int baseline_after(void *pargs)
 static void clear_array(int fd)
 {
 	int key;
-	long *value = 0;
+	int ret;
+	unsigned int value1 = 42;
+	unsigned int value2 = 0;
 
 	for (key = 0; key < MAX_INDEX; key++) {
-		bpf_update_elem(fd, &key, &value, BPF_ANY);
+		value2 = 0;
+		bpf_update_elem(fd, &key, &value1, BPF_ANY);
+		bpf_lookup_elem(fd, &key, &value2);
+		assert(value2==value1);
 	}
 }
 
@@ -163,23 +170,21 @@ int ebpf_orig_before(void *pargs)
 		printf("ERROR: %s\n", filename);
 		return 1;
 	}
-	clear_array(42);
-
+	clear_array(map_fd[0]);
 	return 0;
 }
 
 int ebpf_orig_main(void *pargs)
 {
-	struct profile *prof = pargs;
-	struct profile_args *args = prof->args;
-	unsigned int *val = args->bare_mmap;
-	volatile int temp;
-	int idx = 0;
+	unsigned int value;
+	int key;
+	int fd = map_fd[0];
 
-	for(idx = 0; idx <= 1000; idx++){
-		temp = val[idx];
+	for (key = 0; key < MAX_INDEX; key++) {
+		value = 0;
+		bpf_lookup_elem(fd, &key, &value);
+		assert(value==42);
 	}
-
 	return 0;
 }
 
@@ -196,6 +201,7 @@ int main(int argv, char **argc)
     	struct profile_args pargs;
 
 	struct profile prof[] = {
+/*
 		{
 			.name = "baseline",
 			.before = baseline_before,
@@ -212,12 +218,13 @@ int main(int argv, char **argc)
 			.repeat = REPEAT,
 			.args = &pargs,
 		},
+*/
 		{
 			.name = "ebpf_orig",
 			.before = ebpf_orig_before,
 			.func = ebpf_orig_main,
 			.after = ebpf_orig_after,
-			.repeat = REPEAT,
+			.repeat = 10000,
 			.args = &pargs,
 		},
 		{.name = NULL},

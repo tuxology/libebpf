@@ -11,8 +11,8 @@
 struct bpf_map_def SEC("maps") hist_map = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(u32),
-	.value_size = sizeof(long),
-	.max_entries = 64,
+	.value_size = sizeof(unsigned int),
+	.max_entries = 1000,
 };
 
 char _license[] SEC("license") = "GPL";

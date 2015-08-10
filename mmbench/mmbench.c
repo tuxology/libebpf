@@ -25,12 +25,14 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
-
+#include <assert.h>
 #include <fcntl.h>
 #include <gelf.h>
+#include <linux/bpf.h>
 #include <sys/mman.h>
 #include "utils.h"
-
+#include "bpf_load.h"
+#include <errno.h>
 
 #define PAGE_SIZE     4096
 #define REPEAT 1000000
@@ -53,7 +55,7 @@ struct profile_args
 /*
  * Read values from the kernel mmap
  */
-int ebpf_shm_open(void *pargs)
+int ebpf_shm_before(void *pargs)
 {
 	struct profile *prof = pargs;
 	struct profile_args *args = prof->args;
@@ -77,7 +79,7 @@ int ebpf_shm_open(void *pargs)
 	return 0;
 }
 
-int get_from_array(void *pargs)
+int ebpf_shm_main(void *pargs)
 {
 	struct profile *prof = pargs;
 	struct profile_args *args = prof->args;
@@ -92,7 +94,7 @@ int get_from_array(void *pargs)
 	return 0;
 }
 
-int ebpf_shm_close(void *pargs)
+int ebpf_shm_after(void *pargs)
 {
 	struct profile *prof = pargs;
 	struct profile_args *args = prof->args;
@@ -104,7 +106,7 @@ int ebpf_shm_close(void *pargs)
 /*
  * Baseline benchmark with bare mmap
  */
-int default_shm_open(void *pargs)
+int baseline_before(void *pargs)
 {
 	struct profile *prof = pargs;
 	struct profile_args *args = prof->args;
@@ -113,7 +115,7 @@ int default_shm_open(void *pargs)
 	return 0;
 }
 
-int get_from_default_array(void *pargs)
+int baseline_main(void *pargs)
 {
 	struct profile *prof = pargs;
 	struct profile_args *args = prof->args;
@@ -128,7 +130,7 @@ int get_from_default_array(void *pargs)
 	return 0;
 }
 
-int default_shm_close(void *pargs)
+int baseline_after(void *pargs)
 {
 	struct profile *prof = pargs;
 	struct profile_args *args = prof->args;
@@ -136,26 +138,93 @@ int default_shm_close(void *pargs)
 	return 0;
 }
 
+/*
+ * Original ebpf read with system calls
+ */
+#define MAX_INDEX 1000
+static void clear_array(int fd)
+{
+	int key;
+	int ret;
+	unsigned int value1 = 42;
+	unsigned int value2 = 0;
+
+	for (key = 0; key < MAX_INDEX; key++) {
+		value2 = 0;
+		bpf_update_elem(fd, &key, &value1, BPF_ANY);
+		bpf_lookup_elem(fd, &key, &value2);
+		assert(value2==value1);
+	}
+}
+
+int ebpf_orig_before(void *pargs)
+{
+	struct profile *prof = pargs;
+	struct profile_args *args = prof->args;
+
+	char *filename = "arraymap_kern.o";
+	int option, i;
+
+	/* load kernel program */
+	if (load_bpf_file(filename)) {
+		printf("ERROR: %s\n", filename);
+		return 1;
+	}
+	clear_array(map_fd[0]);
+	return 0;
+}
+
+int ebpf_orig_main(void *pargs)
+{
+	unsigned int value;
+	int key;
+	int fd = map_fd[0];
+
+	for (key = 0; key < MAX_INDEX; key++) {
+		value = 0;
+		bpf_lookup_elem(fd, &key, &value);
+		assert(value==42);
+	}
+	return 0;
+}
+
+int ebpf_orig_after(void *pargs)
+{
+	struct profile *prof = pargs;
+	struct profile_args *args = prof->args;
+	munmap(args->bare_mmap, PAGE_SIZE);
+	return 0;
+}
 
 int main(int argv, char **argc)
 {
     	struct profile_args pargs;
 
 	struct profile prof[] = {
+/*
 		{
-			.name = "get_from_array",
-			.before = ebpf_shm_open,
-			.func = get_from_array,
-			.after = ebpf_shm_close,
+			.name = "baseline",
+			.before = baseline_before,
+			.func = baseline_main,
+			.after = baseline_after,
 			.repeat = REPEAT,
 			.args = &pargs,
 		},
 		{
-			.name = "get_from_default_array",
-			.before = default_shm_open,
-			.func = get_from_default_array,
-			.after = default_shm_close,
+			.name = "ebpf_shm",
+			.before = ebpf_shm_before,
+			.func = ebpf_shm_main,
+			.after = ebpf_shm_after,
 			.repeat = REPEAT,
+			.args = &pargs,
+		},
+*/
+		{
+			.name = "ebpf_orig",
+			.before = ebpf_orig_before,
+			.func = ebpf_orig_main,
+			.after = ebpf_orig_after,
+			.repeat = 10000,
 			.args = &pargs,
 		},
 		{.name = NULL},
